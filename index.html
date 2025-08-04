@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full-Stack Developer Challenge</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,700;1,300&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        /* Applying Montserrat as the default font */
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #f3f4f6; /* light gray */
+        }
+
+        /* --- Content Protection --- */
+        .no-select {
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* IE10+/Edge */
+            user-select: none; /* Standard */
+        }
+        
+        /* Custom Styles based on requirements */
+        .primary-accent-bg { background-color: #FF621D; }
+        .primary-accent-text { color: #FF621D; }
+        .primary-accent-border { border-color: #FF621D; }
+        
+        /* Typography - Reduced font sizes */
+        h1 { font-size: 16px; font-weight: 700; } /* bold */
+        h2 { font-size: 14px; font-weight: 300; } /* light */
+        p, .answer-option, .form-input, .form-select { font-size: 13px; font-weight: 300; } /* light */
+        .note-text { font-size: 11px; font-weight: 300; font-style: italic; } /* light, italic */
+        .question-text { font-weight: 700; } /* bold */
+
+        /* Instruction list styling */
+        .instruction-list li {
+            font-size: 12px;
+            line-height: 1.7; /* Increased line spacing */
+        }
+        @media (max-width: 640px) {
+            .instruction-list li {
+                font-size: 10px;
+            }
+        }
+
+        /* Input field focus highlight */
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(255, 98, 29, 0.4);
+            border-color: #FF621D;
+        }
+        
+        /* Custom progress bar transition */
+        .progress-bar-inner {
+            transition: width 0.5s ease-in-out;
+        }
+
+        /* Fixed height for quiz container to prevent layout shifts */
+        #quiz-container, #debug-challenge-container {
+            min-height: 450px;
+        }
+
+        /* Styling for the answer options */
+        .answer-option {
+            border: 2px solid transparent;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        
+        .answer-option.selected {
+            border-color: #FF621D;
+            background-color: rgba(255, 98, 29, 0.05);
+        }
+        
+        #app-container {
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .step-transition {
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .fade-out { opacity: 0; }
+        .fade-in { opacity: 1; }
+
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #FF621D;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Styles for the code editor and test results */
+        #code-editor {
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            background-color: #2d2d2d;
+            color: #d4d4d4;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 1rem;
+            height: 300px;
+            resize: vertical;
+        }
+        .test-result-item {
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body class="bg-white no-select">
+
+    <div id="app-container" class="w-full bg-white">
+        <div class="p-6 md:p-8 max-w-4xl mx-auto w-full flex flex-col justify-center min-h-full">
+            <!-- Header -->
+            <div class="text-center mb-6">
+                <h1 class="text-lg md:text-xl font-bold primary-accent-text">Full-Stack Developer Challenge</h1>
+                <p class="text-gray-500 mt-1 text-sm">A practical assessment for pragmatic developers.</p>
+            </div>
+
+            <!-- Progress Bar -->
+            <div id="progress-bar-container" class="w-full bg-gray-200 rounded-full h-2.5 mb-6 hidden">
+                <div id="progress-bar" class="primary-accent-bg h-2.5 rounded-full progress-bar-inner" style="width: 0%"></div>
+            </div>
+
+            <!-- Step 1: User Info -->
+            <div id="step1" class="step-transition fade-in">
+                <div class="text-center mb-6">
+                    <h1 class="text-gray-800">Tell us about you</h1>
+                    <h2 class="text-gray-600">Enter your details to begin the assessment.</h2>
+                </div>
+                <div class="space-y-4 mb-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input type="text" id="fullName" placeholder="Full Name" class="form-input w-full p-3 h-12 bg-gray-100 rounded-lg border-2 border-transparent">
+                        <input type="email" id="email" placeholder="Email Address" class="form-input w-full p-3 h-12 bg-gray-100 rounded-lg border-2 border-transparent">
+                        <input type="tel" id="phone" placeholder="Phone Number" class="form-input w-full p-3 h-12 bg-gray-100 rounded-lg border-2 border-transparent">
+                    </div>
+                    <div class="grid grid-cols-1">
+                        <input type="text" id="portfolioLink" placeholder="Portfolio / GitHub Link" class="form-input w-full p-3 h-12 bg-gray-100 rounded-lg border-2 border-transparent">
+                    </div>
+                </div>
+                <div class="bg-red-50 p-4 rounded-lg text-center mb-6">
+                    <p class="note-text text-red-800"><span class="font-bold">Please Note:</span> This information will be used to contact you regarding next steps. Ensure all details are accurate.</p>
+                </div>
+                <div class="text-center flex items-center justify-center space-x-4">
+                    <button id="show-instructions-btn" class="primary-accent-bg text-white font-bold py-3 px-8 rounded-lg shadow-md hover:opacity-90 transition-opacity flex items-center justify-center">
+                        Next
+                    </button>
+                    <button id="open-validator-btn" class="p-3 bg-gray-200 rounded-full shadow-md hover:bg-gray-300 transition-colors" title="Validate Certificate">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-patch-check-fill text-gray-700" viewBox="0 0 16 16"><path d="M10.067.87a2.89 2.89 0 0 0-4.134 0l-.622.638-.89-.011a2.89 2.89 0 0 0-2.924 2.924l.01.89-.636.622a2.89 2.89 0 0 0 0 4.134l.637.622-.011.89a2.89 2.89 0 0 0 2.924 2.924l.89-.01.622.636a2.89 2.89 0 0 0 4.134 0l.622-.637.89.011a2.89 2.89 0 0 0 2.924-2.924l-.01-.89.636-.622a2.89 2.89 0 0 0 0-4.134l-.637-.622.011-.89a2.89 2.89 0 0 0-2.924-2.924l-.89.01-.622-.636zm.287 5.984-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7 8.793l2.646-2.647a.5.5 0 0 1 .708.708z"/></svg>
+                    </button>
+                </div>
+                 <div id="error-container" class="text-center mt-4 hidden">
+                    <p id="error-message" class="text-red-500 font-bold"></p>
+                </div>
+            </div>
+
+            <!-- Instructions Step -->
+            <div id="step-instructions" class="hidden step-transition">
+                <div class="text-center mb-6">
+                    <h1 class="text-gray-800">Test Instructions</h1>
+                    <h2 class="text-gray-600">Please read the following carefully before you begin.</h2>
+                </div>
+                <div class="text-left max-w-2xl mx-auto bg-gray-50 p-6 rounded-lg">
+                    <ol class="list-decimal list-inside space-y-3 instruction-list">
+                        <li>The test has two parts: a multiple-choice quiz and a live debugging challenge.</li>
+                        <li>You will have <b>60 seconds</b> for each multiple-choice question.</li>
+                        <li>After the quiz, you will have <b>10 minutes</b> for the debugging challenge.</li>
+                        <li>Upon completion, you will be awarded a personalized, downloadable certificate with your score.</li>
+                        <li>A full review of your answers will be displayed at the end.</li>
+                        <li>There is <b>no negative marking</b>. Good luck!</li>
+                    </ol>
+                </div>
+                 <div class="text-center mt-8">
+                    <button id="start-quiz-btn" class="primary-accent-bg text-white font-bold py-3 px-8 rounded-lg shadow-md hover:opacity-90 transition-opacity flex items-center justify-center mx-auto">
+                        Begin Test
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: The Quiz -->
+            <div id="step2" class="hidden step-transition">
+                 <div id="quiz-container" class="flex flex-col justify-between step-transition">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-gray-600">Question <span id="question-number">1</span>/15</h2>
+                            <div id="timer" class="primary-accent-text font-bold text-lg">01:00</div>
+                        </div>
+                        <p id="question-text" class="question-text text-base md:text-lg text-gray-900 mb-6">Question text goes here...</p>
+                        <div id="answer-options" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                    </div>
+                    <div class="text-center mt-8">
+                        <button id="next-question-btn" class="primary-accent-bg text-white font-bold py-3 px-12 rounded-lg shadow-md hover:opacity-90 transition-opacity">Next</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NEW Step: Debugging Challenge -->
+            <div id="step-debug" class="hidden step-transition">
+                <div id="debug-challenge-container" class="flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-gray-800 font-bold">Live Debugging Challenge</h2>
+                            <div id="debug-timer" class="primary-accent-text font-bold text-lg">10:00</div>
+                        </div>
+                        <p id="debug-problem" class="text-gray-700 mb-4">Problem description goes here...</p>
+                        <textarea id="code-editor" class="w-full form-input"></textarea>
+                        <div id="test-results-container" class="mt-4 space-y-2 hidden">
+                            <h3 class="font-bold text-sm text-gray-800">Test Results:</h3>
+                            <div id="test-results-list"></div>
+                        </div>
+                    </div>
+                    <div class="text-center mt-8 flex items-center justify-center space-x-4">
+                        <button id="run-tests-btn" class="bg-gray-600 text-white font-bold py-3 px-8 rounded-lg shadow-md hover:bg-gray-700 transition-opacity">Run Tests</button>
+                        <button id="submit-challenge-btn" class="primary-accent-bg text-white font-bold py-3 px-8 rounded-lg shadow-md hover:opacity-90 transition-opacity">Submit Challenge</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Results -->
+            <div id="step3" class="hidden step-transition text-center">
+                <h1 class="text-gray-800">Test Complete!</h1>
+                <h2 class="text-gray-600 mb-4">Here is your result.</h2>
+                <div class="my-8">
+                    <p class="text-gray-700 text-lg">You Scored:</p>
+                    <p id="final-score" class="text-5xl font-bold primary-accent-text">12/15</p>
+                </div>
+                <p id="placement-message" class="text-lg font-semibold mb-6"></p>
+                <button id="download-cert-btn" class="primary-accent-bg text-white font-bold py-3 px-8 rounded-lg shadow-md hover:opacity-90 transition-opacity">Download Certificate</button>
+                <p id="certificate-eligibility-message" class="text-sm text-gray-500 mt-4 font-semibold hidden"></p>
+                
+                <hr class="my-8">
+
+                <!-- Full Quiz Review -->
+                <div id="review-section" class="hidden mt-8 text-left">
+                    <h1 class="text-gray-800 text-center">Full Quiz Review</h1>
+                    <h2 class="text-gray-600 text-center mb-4">Review your answers below.</h2>
+                    <div id="full-review-list" class="space-y-6"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Certificate Validator Modal -->
+    <div id="validator-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md text-center">
+            <h1 class="text-gray-800 mb-2">Validate Certificate</h1>
+            <p class="text-gray-600 text-sm mb-4">Enter the certificate number to verify its authenticity.</p>
+            <input type="text" id="cert-id-input" placeholder="Enter Certificate Number (e.g., FSD-123...)" class="form-input w-full p-3 bg-gray-100 rounded-lg border-2 border-transparent mb-4">
+            <div id="validator-result" class="text-left hidden p-4 rounded-lg"></div>
+            <div class="flex items-center justify-center space-x-4">
+                <button id="validate-cert-btn" class="primary-accent-bg text-white font-bold py-2 px-6 rounded-lg shadow-md hover:opacity-90 flex items-center justify-center">Validate</button>
+                <button id="close-validator-btn" class="bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg shadow-md hover:bg-gray-400">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Certificate Template with PNG Background -->
+    <div id="certificate-template" class="hidden absolute -left-full" style="width: 842px; height: 595px; position: relative; font-family: 'Montserrat', sans-serif;">
+        <img id="cert-bg-img" src="https://placehold.co/842x595/ffffff/FF621D?text=Certificate+of+Completion" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1;">
+        <div style="position: absolute; z-index: 2; width: 100%; height: 100%; top: 0; left: 0; box-sizing: border-box;">
+            <div id="cert-name" style="position: absolute; top: 250px; left: 0; right: 0; text-align: center; font-size: 40px; font-weight: bold; color: #333; letter-spacing: 2px; text-transform: uppercase;">
+                STUDENT NAME
+            </div>
+            <div style="position: absolute; top: 418px; left: 160px; font-size: 16px; font-weight: bold; color: #333;">
+                <span id="cert-score">XX</span>
+            </div>
+            <div id="cert-date" style="position: absolute; top: 495px; left: 130px; font-size: 12px; color: #555;">
+                DD/MM/YYYY
+            </div>
+            <div id="cert-number" style="position: absolute; top: 495px; left: 350px; font-size: 12px; color: #555;">
+                CERTIFICATE-NUMBER
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const googleSheetWebAppUrl = 'https://script.google.com/macros/s/AKfycbxOrXOf4inXr_0w-9q6ujyRTelfOBR9Ll6N7VWwbx-PPwWhrWI88BQSQJih2utm6Ldu/exec';
+            
+            // --- DOM ELEMENTS ---
+            const step1 = document.getElementById('step1');
+            const stepInstructions = document.getElementById('step-instructions');
+            const step2 = document.getElementById('step2');
+            const stepDebug = document.getElementById('step-debug');
+            const step3 = document.getElementById('step3');
+            
+            const showInstructionsBtn = document.getElementById('show-instructions-btn');
+            const startQuizBtn = document.getElementById('start-quiz-btn');
+            const nextQuestionBtn = document.getElementById('next-question-btn');
+            const runTestsBtn = document.getElementById('run-tests-btn');
+            const submitChallengeBtn = document.getElementById('submit-challenge-btn');
+
+            const fullNameInput = document.getElementById('fullName');
+            const emailInput = document.getElementById('email');
+            const phoneInput = document.getElementById('phone');
+            const portfolioLinkInput = document.getElementById('portfolioLink');
+            const errorContainer = document.getElementById('error-container');
+            const errorMessageEl = document.getElementById('error-message');
+            
+            const progressBarContainer = document.getElementById('progress-bar-container');
+            const progressBar = document.getElementById('progress-bar');
+            const quizContainer = document.getElementById('quiz-container');
+            const questionNumberEl = document.getElementById('question-number');
+            const questionTextEl = document.getElementById('question-text');
+            const answerOptionsEl = document.getElementById('answer-options');
+            const timerEl = document.getElementById('timer');
+            
+            const debugTimerEl = document.getElementById('debug-timer');
+            const debugProblemEl = document.getElementById('debug-problem');
+            const codeEditor = document.getElementById('code-editor');
+            const testResultsContainer = document.getElementById('test-results-container');
+            const testResultsList = document.getElementById('test-results-list');
+
+            const finalScoreEl = document.getElementById('final-score');
+            const placementMessageEl = document.getElementById('placement-message');
+            const downloadCertBtn = document.getElementById('download-cert-btn');
+            const certificateEligibilityMessageEl = document.getElementById('certificate-eligibility-message');
+            const reviewSection = document.getElementById('review-section');
+            const fullReviewList = document.getElementById('full-review-list');
+            
+            const openValidatorBtn = document.getElementById('open-validator-btn');
+            const validatorModal = document.getElementById('validator-modal');
+            const closeValidatorBtn = document.getElementById('close-validator-btn');
+            const validateCertBtn = document.getElementById('validate-cert-btn');
+            const certIdInput = document.getElementById('cert-id-input');
+            const validatorResultEl = document.getElementById('validator-result');
+            
+            // --- QUIZ & CHALLENGE DATA ---
+            let quizQuestions = [];
+            let selectedDebugChallenge = {};
+            const questionBank = [
+                // --- 50 Questions ---
+                { question: "A client needs a simple 5-page marketing website with a blog...", options: ["Build a custom React site...", "Use WordPress...", "Create a static HTML/CSS site...", "Suggest Webflow..."], answer: 1, rationale: "WordPress offers the fastest time-to-market..." },
+                { question: "You need to build a web app with a highly interactive, real-time dashboard...", options: ["PHP app", "React or Vue SPA", "Shopify site", "WordPress installation"], answer: 1, rationale: "SPAs like React are designed for complex, stateful UIs..." },
+                { question: "When is it appropriate to choose 'not to code' and use a tool like Zapier?", options: ["Never", "For integrating standard third-party APIs", "For core business logic", "Only for hobby projects"], answer: 1, rationale: "Automation platforms save significant development time for non-core tasks." },
+                { question: "What is the most effective way to use GitHub Copilot?", options: ["Let it write everything", "Write a detailed comment first", "Write it yourself, then ask for refactoring", "Only for autocomplete"], answer: 1, rationale: "Providing clear context is key to getting useful code suggestions." },
+                { question: "You use ChatGPT to generate a Node.js script. What's the most critical next step?", options: ["Deploy immediately", "Thank the AI", "Review for security, add error handling, and test", "Ask a junior to test it"], answer: 2, rationale: "AI-generated code must always be treated as untrusted and validated." },
+                { question: "Which CSS Flexbox property spaces items evenly, with the first at the start and last at the end?", options: ["`align-items: center;`", "`justify-content: space-around;`", "`justify-content: space-between;`", "`flex-direction: column;`"], answer: 2, rationale: "`space-between` distributes items with no space on the ends." },
+                { question: "What is the primary purpose of the `useEffect` hook in React?", options: ["Store state", "Perform side effects like data fetching", "Create context", "Define JSX structure"], answer: 1, rationale: "`useEffect` is for operations outside the normal render flow." },
+                { question: "A website is slow due to large images on mobile. What's the best solution?", options: ["Compress images heavily", "Use `<picture>` or `srcset`", "Remove images on mobile", "Load images with JS"], answer: 1, rationale: "Responsive image techniques allow the browser to download only the necessary image size." },
+                { question: "What will `console.log(x.a)` output? `const x = { a: 1 }; const y = x; y.a = 2;`", options: ["1", "2", "undefined", "Error"], answer: 1, rationale: "Objects are passed by reference. `y` and `x` point to the same object." },
+                { question: "Which HTTP method and status code are for a successful request to fetch a list of users?", options: ["`POST` & `201`", "`GET` & `200`", "`GET` & `404`", "`UPDATE` & `301`"], answer: 1, rationale: "`GET` is for retrieving data, and `200 OK` indicates success." },
+                { question: "What is a primary advantage of a NoSQL database for a project with evolving data?", options: ["Rigid schema", "Always faster", "Flexible schema", "Better transactions"], answer: 2, rationale: "Schema flexibility is the key advantage of NoSQL for agile projects." },
+                { question: "How does a JSON Web Token (JWT) prove a user's identity?", options: ["Stores password in localStorage", "Server verifies its digital signature", "Server keeps a list of active JWTs", "Payload is encrypted"], answer: 1, rationale: "The core principle of JWT is stateless, verifiable claims via a digital signature." },
+                { question: "What is the update-safe method to add a script to a WordPress site's header?", options: ["Edit `header.php` directly", "Use a plugin or the `wp_head` action hook", "Paste into every page's content", "Ask the client to do it"], answer: 1, rationale: "Directly editing theme files is bad practice; changes are lost on update." },
+                { question: "What templating language does Shopify use for themes?", options: ["Blade", "Twig", "Liquid", "Handlebars"], answer: 2, rationale: "Liquid is the open-source templating language created by Shopify." },
+                { question: "How do you add custom server-side JS logic to a Wix site?", options: ["Drag-and-drop editor", "Wix ADI", "Velo by Wix backend files (.jsw)", "App Market"], answer: 2, rationale: "Velo is Wix's full-stack environment; backend code is placed in `.jsw` files." },
+                { question: "What is the purpose of a `.gitignore` file?", options: ["To list all files in the project", "To specify intentionally untracked files that Git should ignore", "To store the Git commit history", "To configure user permissions"], answer: 1, rationale: "`.gitignore` tells Git which files or directories to ignore in a project, such as `node_modules` or `.env` files." },
+                { question: "In Node.js, what is the difference between `require` and `import`?", options: ["They are identical", "`require` is for frontend, `import` is for backend", "`require` is for CommonJS modules, `import` is for ES modules", "`import` is an older, deprecated syntax"], answer: 2, rationale: "Node.js traditionally used CommonJS (`require`). `import` is the standard for modern ES modules, which Node.js now supports." },
+                { question: "A client wants an e-commerce store with advanced custom features and the ability to scale. Which platform is the most robust starting point?", options: ["Wix eCommerce", "WooCommerce on WordPress", "Shopify Plus", "A custom solution with Stripe"], answer: 2, rationale: "Shopify Plus is an enterprise-level platform designed for high-volume, custom e-commerce experiences, offering more API access and scalability than WooCommerce or Wix." },
+                { question: "What is Cross-Site Scripting (XSS)?", options: ["A CSS technique for styling across multiple sites", "A security vulnerability that allows attackers to inject malicious scripts into web pages viewed by other users", "A method for making API requests to different domains", "A JavaScript framework for animations"], answer: 1, rationale: "XSS is a critical security flaw where un-sanitized user input is rendered on a page, allowing script execution in the context of another user's session." },
+                { question: "What does the `...` spread operator do in JavaScript for objects?", options: ["It deletes the object", "It creates a shallow copy of the object's properties into a new object", "It converts the object to a JSON string", "It accesses the object's prototype"], answer: 1, rationale: "The spread syntax allows an iterable such as an array or object to be expanded in places where zero or more arguments or elements are expected." },
+                { question: "In React, what is the main reason to use `useMemo`?", options: ["To fetch data from an API", "To prevent a component from re-rendering", "To memoize a computationally expensive value so it's not recalculated on every render", "To store component state"], answer: 2, rationale: "`useMemo` is a performance optimization hook that caches the result of a function call and re-runs it only when its dependencies change." },
+                { question: "What is the purpose of `res.json()` in an Express.js route?", options: ["To receive a JSON request from the client", "To validate a JSON object", "To end the response process and send a JSON response to the client", "To connect to a JSON database"], answer: 2, rationale: "It serializes a JavaScript object or array into a JSON string and sends it as the HTTP response body, automatically setting the Content-Type header." },
+                { question: "A client has a Webflow site and wants to add a members-only section. What is the most pragmatic approach?", options: ["Rebuild the entire site on WordPress with a membership plugin", "Tell them it's impossible on Webflow", "Use Webflow's native Memberships feature or integrate a third-party tool like Memberstack", "Code a custom user authentication system from scratch"], answer: 2, rationale: "Leveraging the platform's native or well-integrated third-party solutions is far more efficient and maintainable than rebuilding or custom coding for this scenario." },
+                { question: "What is the `box-sizing: border-box;` CSS property used for?", options: ["To create a 3D box effect", "To include padding and border in the element's total width and height", "To automatically size the box based on its content", "To add a border around the box"], answer: 1, rationale: "By default, an element's width and height apply only to its content. `border-box` makes layout math more intuitive by including padding and border in the specified dimensions." },
+                { question: "What is a 'headless CMS'?", options: ["A CMS that has no graphical user interface", "A CMS that only manages content and delivers it via an API to any frontend", "A CMS that is free to use", "A CMS that runs on a server without an operating system"], answer: 1, rationale: "A headless CMS decouples the content management backend from the presentation layer (the 'head'), allowing developers to use any frontend framework they choose." },
+                { question: "What is the output of `console.log(0.1 + 0.2 === 0.3)`?", options: ["`true`", "`false`", "`undefined`", "Error"], answer: 1, rationale: "This logs `false` due to floating-point precision errors in binary representation. It's a classic JavaScript quirk." },
+                { question: "In a REST API, which HTTP status code should be used to indicate that a resource was successfully created?", options: ["200 OK", "201 Created", "204 No Content", "400 Bad Request"], answer: 1, rationale: "`201 Created` is the specific and correct status code for a successful creation of a new resource on the server." },
+                { question: "What is the primary benefit of using a tool like Framer for a developer?", options: ["It's the best tool for writing backend logic", "It allows for rapid prototyping of high-fidelity, interactive UI/UX designs that can be translated to code", "It automatically optimizes database queries", "It's a replacement for Git"], answer: 1, rationale: "Framer excels at creating realistic prototypes, allowing developers and designers to test and refine user experiences before writing production code." },
+                { question: "What is the purpose of `next()` in Express.js middleware?", options: ["To end the request-response cycle", "To skip the current middleware", "To pass control to the next middleware function in the stack", "To go to the next route"], answer: 2, rationale: "Middleware functions are chained together. `next()` is called to move processing to the next function in the chain." },
+                { question: "What is the difference between `null` and `undefined` in JavaScript?", options: ["They are strictly equal (`===`)", "`null` is an accidental value, `undefined` is intentional", "`null` is an assigned value representing 'no value', while `undefined` means a variable has been declared but not assigned", "There is no difference"], answer: 2, rationale: "`null` is an explicit assignment of 'no value'. `undefined` is the default value of a variable that has not been initialized." },
+                { question: "A client wants a simple one-page portfolio site deployed quickly and for free. Which is the best option?", options: ["A custom React app on AWS", "A WordPress site on a paid host", "A static HTML/CSS page on GitHub Pages or Netlify", "A Shopify store"], answer: 2, rationale: "Static site hosts like GitHub Pages or Netlify offer generous free tiers and are perfect for simple, fast, and secure one-page sites." },
+                { question: "What does the 'C' in CORS stand for?", options: ["Client", "Content", "Cross", "Cookie"], answer: 2, rationale: "CORS stands for Cross-Origin Resource Sharing, a browser security feature that restricts how resources on a web page can be requested from another domain." },
+                { question: "In React, why is it a bad practice to modify state directly (e.g., `this.state.name = 'new'`)?", options: ["It's not a bad practice", "It will not cause the component to re-render with the updated state", "It makes the code harder to read", "It throws a syntax error"], answer: 1, rationale: "React's re-rendering process is triggered by calling the state update function (e.g., `setState`). Modifying state directly bypasses this mechanism." },
+                { question: "What is the purpose of an `.env` file in a Node.js project?", options: ["To define environment-specific variables like API keys and database URLs, keeping them out of source control", "To list all project dependencies", "To configure the Node.js runtime", "To document the project's API"], answer: 0, rationale: "`.env` files are used to store sensitive or environment-specific configuration that should not be hardcoded or committed to Git." },
+                { question: "A client wants to sell a few digital products (e.g., ebooks) on their existing Webflow site. What's the most pragmatic solution?", options: ["Rebuild the site on Shopify", "Integrate a service like Gumroad or Lemon Squeezy with simple buy buttons", "Build a custom e-commerce backend with Node.js and Stripe", "Tell them Webflow doesn't support e-commerce"], answer: 1, rationale: "For a small number of digital products, integrating a lightweight service like Gumroad is far more cost-effective and faster than a full e-commerce migration or custom build." },
+                { question: "What is the CSS `z-index` property used for?", options: ["To set the zoom level of an element", "To control the vertical stacking order of positioned elements", "To define the element's size on the Z-axis", "To add a shadow effect"], answer: 1, rationale: "`z-index` specifies the stack order of an element. An element with a greater stack order is always in front of an element with a lower stack order." },
+                { question: "What is the main advantage of server-side rendering (SSR) with a framework like Next.js?", options: ["It makes the website work offline", "It improves initial page load performance and SEO by sending a fully rendered HTML page from the server", "It simplifies component state management", "It's the only way to build React applications"], answer: 1, rationale: "SSR helps with SEO because search engine crawlers can easily index the fully rendered page, and it improves perceived performance for users." },
+                { question: "What is the purpose of `Promise.all()` in JavaScript?", options: ["To run a single promise", "To run multiple promises in sequence, one after another", "To run multiple promises in parallel and wait for all of them to resolve", "To catch errors from any promise"], answer: 2, rationale: "`Promise.all()` is a powerful tool for handling multiple asynchronous operations concurrently, improving performance by not waiting for each one to finish sequentially." },
+                { question: "A client on a tight deadline needs a visually impressive landing page with complex scroll-based animations. Which tool would you prioritize?", options: ["WordPress with Elementor", "Webflow", "A custom React app with GSAP", "Wix"], answer: 1, rationale: "Webflow's built-in Interactions engine is specifically designed for creating complex, timeline-based animations without code, making it the fastest tool for this specific task." },
+                { question: "What is the `event loop` in Node.js?", options: ["A `for` loop that runs forever", "The mechanism that allows Node.js to perform non-blocking I/O operations despite being single-threaded", "A security feature to prevent infinite loops", "A tool for debugging events"], answer: 1, rationale: "The event loop is the core of Node.js's asynchronous nature. It offloads operations to the system kernel and processes their callbacks when they are complete." },
+                { question: "In CSS, what is the difference between `display: none;` and `visibility: hidden;`?", options: ["There is no difference", "`display: none;` hides the element but it still takes up space; `visibility: hidden;` removes it completely", "`display: none;` removes the element from the document flow; `visibility: hidden;` hides it but it still takes up its original space", "`visibility: hidden;` is for text, `display: none;` is for images"], answer: 2, rationale: "This is a key layout concept. `display: none` removes the element entirely, affecting layout. `visibility: hidden` makes it invisible but preserves its space." },
+                { question: "What is the purpose of `npm install --save-dev`?", options: ["To save the package for all future projects", "To install a package globally on your machine", "To install a package and add it to the `devDependencies` in `package.json`", "To install a package and add it to the `dependencies`"], answer: 2, rationale: "`devDependencies` are for packages needed only for development and testing (e.g., Jest, ESLint), not for the production build." },
+                { question: "A client wants a Shopify store with a custom checkout experience. What is a major limitation to consider?", options: ["Shopify doesn't support custom themes", "You cannot modify the checkout process on most Shopify plans (except Shopify Plus)", "Shopify's API is not public", "You cannot add custom CSS to Shopify"], answer: 1, rationale: "For security and reliability, Shopify locks down the checkout process (`checkout.liquid`) for all plans except the enterprise-level Shopify Plus." },
+                { question: "What is the output of `console.log(typeof null)`?", options: ["`'null'`", "`'undefined'`", "`'object'`", "`'string'`"], answer: 2, rationale: "This is a famous historical bug in JavaScript. `typeof null` incorrectly returns `'object'`. It has been kept for legacy reasons." },
+                { question: "What is API rate limiting?", options: ["A measure of how fast an API can respond", "A security feature to prevent Cross-Site Scripting", "Controlling the number of requests a user can make to an API in a given period of time", "A way to rank APIs by popularity"], answer: 2, rationale: "Rate limiting is crucial for preventing abuse, ensuring fair usage, and maintaining the stability of an API service." },
+                { question: "In React, what are 'props'?", options: ["Internal state of a component", "A way to pass data from a parent component to a child component", "CSS styles for a component", "Event handlers for a component"], answer: 1, rationale: "Props (short for properties) are the primary way to make components reusable and configurable by passing data down the component tree." },
+                { question: "What is the main benefit of using a CDN (Content Delivery Network) for website assets like images and scripts?", options: ["It provides a backup of your website", "It improves website security by hiding your server's IP address", "It improves website performance by caching assets on servers geographically closer to the user", "It automatically compresses all your assets"], answer: 2, rationale: "CDNs reduce latency by serving content from edge locations near the end-user, which significantly speeds up load times." },
+                { question: "What will `console.log('5' + 3)` output?", options: ["`8`", "`'53'`", "Error", "`'8'`"], answer: 1, rationale: "The `+` operator in JavaScript performs string concatenation if one of the operands is a string. It does not perform type coercion to a number." },
+                { question: "A client has an existing WordPress site and wants to add a simple, modern-looking blog section without changing their old theme. What is a pragmatic solution?", options: ["Rebuild the entire site with a new theme", "Use a 'headless' approach: keep WordPress as the backend and build a new React-based frontend for the blog", "Tell them it's not possible", "Install a modern block-based theme and try to make it look like the old one"], answer: 1, rationale: "A headless approach allows for a modern frontend experience (React, Vue, etc.) while leveraging the client's familiarity with the WordPress backend for content management." },
+                { question: "What is the purpose of the `alt` attribute on an `<img>` tag?", options: ["To provide a title for the image that appears on hover", "To provide alternative text for screen readers and for when the image cannot be displayed", "To set the alignment of the image", "To link the image to another page"], answer: 1, rationale: "The `alt` attribute is crucial for web accessibility (A11Y) and SEO. It describes the image's content for users who cannot see it." }
+            ];
+
+            const debugChallengeBank = [
+                {
+                    problem: "The function `processUsers` should take an array of user objects, filter out inactive users, and return strings like 'John Doe (30)'. The current code has multiple bugs. Fix it.",
+                    buggyCode: `function processUsers(users) {
+  const activeUsers = users.filter(user => user.isActive = true);
+  const userStrings;
+  for (let i = 0; i < activeUsers.length; i++) {
+    userStrings.push(user.name + ' (' + user.age + ')');
+  }
+  return userStrings;
+}`,
+                    testCases: [
+                        { input: [{ name: 'John Doe', age: 30, isActive: true }, { name: 'Jane Smith', age: 25, isActive: false }], expected: ['John Doe (30)'] },
+                        { input: [{ name: 'Peter Pan', age: 100, isActive: true }, { name: 'Captain Hook', age: 105, isActive: true }], expected: ['Peter Pan (100)', 'Captain Hook (105)'] },
+                        { input: [], expected: [] }
+                    ],
+                    explanation: "1. **Incorrect Filtering:** `user.isActive = true` is an assignment, not a comparison. It sets every user's `isActive` property to `true` and returns `true`, so no users are filtered. It should be `user.isActive === true`. <br>2. **Uninitialized Array:** `const userStrings;` declares a constant without initializing it. It should be `const userStrings = [];`. <br>3. **Incorrect Variable in Loop:** The loop tries to access `user.name` and `user.age`, but `user` is not defined in that scope. It should be `activeUsers[i].name` and `activeUsers[i].age`."
+                },
+                {
+                    problem: "The function `sumPositiveNumbers` should take an array of numbers and return the sum of only the positive numbers. The current code returns an incorrect sum. Fix it.",
+                    buggyCode: `function sumPositiveNumbers(numbers) {
+  let sum = 0;
+  for (let i = 0; i <= numbers.length; i++) {
+    if (numbers[i] > 0) {
+      sum = numbers[i];
+    }
+  }
+  return sum;
+}`,
+                    testCases: [
+                        { input: [1, -4, 7, 12], expected: 20 },
+                        { input: [-1, -2, -3], expected: 0 },
+                        { input: [], expected: 0 }
+                    ],
+                    explanation: "1. **Loop Condition:** The loop condition `i <= numbers.length` causes it to run one extra time, accessing an `undefined` element which results in errors. It should be `i < numbers.length`. <br>2. **Incorrect Summation:** `sum = numbers[i]` overwrites the sum in each iteration instead of adding to it. It should be `sum += numbers[i]`."
+                },
+                {
+                    problem: "This React component's `count` state should increment on each click, but it doesn't update on the screen. Fix the state update logic.",
+                    buggyCode: `function Counter() {
+  let count = 0;
+
+  function handleClick() {
+    count++;
+    console.log(count); // This will log the correct number
+  }
+
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={handleClick}>Increment</button>
+    </div>
+  );
+}`,
+                    testCases: [
+                        // This is a conceptual challenge for React
+                    ],
+                    explanation: "This is a conceptual React problem. The issue is that a plain JavaScript variable (`let count`) is used for the count. React does not re-render the component when such variables change. To fix this, you must use React's state management. The code should be rewritten using the `useState` hook: `const [count, setCount] = useState(0);` and the click handler should call `setCount(count + 1);`."
+                },
+                {
+                    problem: "This WordPress PHP snippet in `functions.php` is meant to add a CSS file, but it's not working. Identify the error in the hook.",
+                    buggyCode: `function my_theme_styles() {
+  wp_enqueue_style( 'my-custom-style', get_stylesheet_uri() );
+}
+
+add_action( 'wp_head', 'my_theme_styles' );`,
+                    testCases: [
+                        // This is a conceptual challenge for WordPress
+                    ],
+                    explanation: "This is a conceptual WordPress problem. The issue is the incorrect action hook. While `wp_head` runs in the header, the correct and standard hook for enqueuing scripts and styles in WordPress is `wp_enqueue_scripts`. The fix is to change the last line to: `add_action( 'wp_enqueue_scripts', 'my_theme_styles' );`."
+                },
+                {
+                    problem: "The async function `fetchAndProcess` should fetch data from a URL, and return the `name` property of the resulting JSON. It's currently returning `undefined`. Fix the async/await logic.",
+                    buggyCode: `async function fetchAndProcess(url) {
+  const response = fetch(url);
+  const data = response.json();
+  return data.name;
+}`,
+                    testCases: [
+                        // This is a conceptual challenge for async/await
+                    ],
+                    explanation: "The `fetch` and `.json()` calls are asynchronous and return Promises. The code doesn't wait for them to resolve before trying to access properties. Each of these calls must be preceded by the `await` keyword: `const response = await fetch(url);` and `const data = await response.json();`."
+                },
+                {
+                    problem: "The function `getUniqueValues` should take an array and return a new array with duplicate values removed. The current code returns an empty array. Fix it.",
+                    buggyCode: `function getUniqueValues(arr) {
+  const unique = [];
+  arr.forEach(item => {
+    if (unique.includes(item)) {
+      unique.push(item);
+    }
+  });
+  return unique;
+}`,
+                    testCases: [
+                        { input: [1, 2, 2, 3, 4, 4, 5], expected: [1, 2, 3, 4, 5] },
+                        { input: ['a', 'b', 'a', 'c'], expected: ['a', 'b', 'c'] }
+                    ],
+                    explanation: "The logic is reversed. The code is currently pushing items into the `unique` array only if they *already exist* in it. The condition should be inverted to `if (!unique.includes(item))` to only add items that are not yet in the result array."
+                }
+            ];
+            
+            let currentQuestionIndex = 0;
+            let score = 0;
+            let quizTimerInterval, debugTimerInterval;
+            let userData = {};
+            let userAnswers = [];
+            let debugData = {};
+            
+            document.addEventListener('contextmenu', event => event.preventDefault());
+            
+            function generateCertificateNumber() {
+                const timestamp = Date.now();
+                const randomPart = Math.random().toString(36).substr(2, 5).toUpperCase();
+                return `FSD-${timestamp}-${randomPart}`;
+            }
+
+            function transitionToStep(from, to) {
+                from.classList.remove('fade-in');
+                from.classList.add('fade-out');
+                setTimeout(() => {
+                    from.classList.add('hidden');
+                    to.classList.remove('hidden');
+                    requestAnimationFrame(() => {
+                        to.classList.add('fade-in');
+                        to.classList.remove('fade-out');
+                    });
+                }, 300);
+            }
+
+            function validateForm() {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                const phoneRegex = /^[6-9]\d{9}$/;
+                const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+                if (!fullNameInput.value || !emailInput.value || !phoneInput.value || !portfolioLinkInput.value) { errorMessageEl.textContent = "Please fill out all fields."; errorContainer.classList.remove('hidden'); return false; }
+                if (!emailRegex.test(emailInput.value)) { errorMessageEl.textContent = "Please enter a valid email address."; errorContainer.classList.remove('hidden'); return false; }
+                if (!phoneRegex.test(phoneInput.value)) { errorMessageEl.textContent = "Please enter a valid 10-digit Indian phone number."; errorContainer.classList.remove('hidden'); return false; }
+                if (!urlRegex.test(portfolioLinkInput.value)) { errorMessageEl.textContent = "Please enter a valid portfolio or GitHub URL."; errorContainer.classList.remove('hidden'); return false; }
+                errorContainer.classList.add('hidden');
+                return true;
+            }
+
+            async function showInstructions() {
+                if (!validateForm()) return;
+
+                showInstructionsBtn.innerHTML = `<span class="spinner"></span> Verifying...`;
+                showInstructionsBtn.disabled = true;
+
+                try {
+                    const response = await fetch(`${googleSheetWebAppUrl}?email=${encodeURIComponent(emailInput.value)}`);
+                    const result = await response.json();
+
+                    if (result.isDuplicate) {
+                        errorMessageEl.textContent = "This email address has already been used for an assessment.";
+                        errorContainer.classList.remove('hidden');
+                        showInstructionsBtn.innerHTML = `Next`;
+                        showInstructionsBtn.disabled = false;
+                        return;
+                    }
+
+                    userData = { 
+                        name: fullNameInput.value, 
+                        email: emailInput.value, 
+                        phone: phoneInput.value, 
+                        portfolio: portfolioLinkInput.value,
+                        certificateNumber: generateCertificateNumber() 
+                    };
+                    transitionToStep(step1, stepInstructions);
+
+                } catch (err) {
+                    console.error("Verification error:", err);
+                    errorMessageEl.textContent = "Could not verify email. Please try again.";
+                    errorContainer.classList.remove('hidden');
+                    showInstructionsBtn.innerHTML = `Next`;
+                    showInstructionsBtn.disabled = false;
+                }
+            }
+
+            function startQuiz() {
+                startQuizBtn.innerHTML = `<span class="spinner"></span> Preparing test...`;
+                startQuizBtn.disabled = true;
+
+                // Use the static, randomized bank instead of the AI call
+                quizQuestions = [...questionBank].sort(() => 0.5 - Math.random()).slice(0, 15);
+                
+                startQuizBtn.innerHTML = `Begin Test`;
+                startQuizBtn.disabled = false;
+
+                progressBarContainer.classList.remove('hidden');
+                updateProgressBar();
+                transitionToStep(stepInstructions, step2);
+                loadQuestion();
+            }
+            
+            function updateProgressBar() {
+                const totalSteps = quizQuestions.length + 1;
+                const completedSteps = currentQuestionIndex;
+                const progress = (completedSteps / totalSteps) * 100;
+                progressBar.style.width = `${progress}%`;
+            }
+
+            function loadQuestion() {
+                 if (currentQuestionIndex < quizQuestions.length) {
+                    const question = quizQuestions[currentQuestionIndex];
+                    questionNumberEl.textContent = `${currentQuestionIndex + 1}`;
+                    questionTextEl.innerHTML = question.question;
+                    answerOptionsEl.innerHTML = '';
+                    question.options.forEach((option, index) => {
+                        const button = document.createElement('button');
+                        button.innerHTML = option;
+                        button.classList.add('answer-option', 'w-full', 'p-4', 'bg-gray-50', 'rounded-lg', 'text-left', 'hover:bg-gray-100');
+                        button.dataset.index = index;
+                        button.addEventListener('click', () => selectAnswer(button));
+                        answerOptionsEl.appendChild(button);
+                    });
+                    nextQuestionBtn.textContent = currentQuestionIndex === quizQuestions.length - 1 ? 'Finish Quiz' : 'Next';
+                    startQuizTimer();
+                }
+            }
+            
+            function startQuizTimer() {
+                let timeLeft = 60;
+                timerEl.textContent = `01:00`;
+                timerEl.classList.remove('text-red-500');
+                quizTimerInterval = setInterval(() => {
+                    timeLeft--;
+                    const seconds = String(timeLeft).padStart(2, '0');
+                    timerEl.textContent = `00:${seconds}`;
+                    if (timeLeft < 10) timerEl.classList.add('text-red-500');
+                    if (timeLeft <= 0) {
+                        clearInterval(quizTimerInterval);
+                        handleNextQuestion(false);
+                    }
+                }, 1000);
+            }
+
+            function selectAnswer(button) {
+                resetAnswerStyles();
+                button.classList.add('selected');
+            }
+            
+            function resetAnswerStyles() {
+                document.querySelectorAll('.answer-option').forEach(btn => btn.classList.remove('selected'));
+            }
+
+            function handleNextQuestion(answered = true) {
+                clearInterval(quizTimerInterval);
+                const selectedOption = document.querySelector('.answer-option.selected');
+                let selectedAnswerIndex = -1; 
+
+                if (answered && selectedOption) {
+                    selectedAnswerIndex = parseInt(selectedOption.dataset.index);
+                    if (selectedAnswerIndex === quizQuestions[currentQuestionIndex].answer) score++;
+                }
+                userAnswers.push({
+                    question: quizQuestions[currentQuestionIndex].question,
+                    userAnswer: selectedAnswerIndex,
+                    correctAnswer: quizQuestions[currentQuestionIndex].answer,
+                    options: quizQuestions[currentQuestionIndex].options,
+                    rationale: quizQuestions[currentQuestionIndex].rationale
+                });
+                
+                currentQuestionIndex++;
+                updateProgressBar();
+                
+                if (currentQuestionIndex < quizQuestions.length) {
+                    loadQuestion();
+                } else {
+                    transitionToStep(step2, stepDebug);
+                    startDebugChallenge();
+                }
+            }
+            
+            function startDebugChallenge() {
+                const randomIndex = Math.floor(Math.random() * debugChallengeBank.length);
+                selectedDebugChallenge = debugChallengeBank[randomIndex];
+
+                debugProblemEl.textContent = selectedDebugChallenge.problem;
+                codeEditor.value = selectedDebugChallenge.buggyCode;
+                startDebugTimer();
+            }
+
+            function startDebugTimer() {
+                let timeLeft = 600;
+                debugTimerInterval = setInterval(() => {
+                    timeLeft--;
+                    const minutes = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+                    const seconds = String(timeLeft % 60).padStart(2, '0');
+                    debugTimerEl.textContent = `${minutes}:${seconds}`;
+                    if (timeLeft < 60) debugTimerEl.classList.add('text-red-500');
+                    if (timeLeft <= 0) {
+                        clearInterval(debugTimerInterval);
+                        finishChallenge();
+                    }
+                }, 1000);
+            }
+
+            function runTests() {
+                const userCode = codeEditor.value;
+                testResultsList.innerHTML = '';
+                testResultsContainer.classList.remove('hidden');
+                let allPassed = true;
+
+                if (!selectedDebugChallenge.testCases || selectedDebugChallenge.testCases.length === 0) {
+                     const resultItem = document.createElement('div');
+                     resultItem.className = 'test-result-item p-2 rounded bg-blue-100';
+                     let passed = false;
+                     if (userCode.includes('useState') && userCode.includes('setCount')) passed = true;
+                     if (userCode.includes('wp_enqueue_scripts')) passed = true;
+                     if (userCode.includes('await')) passed = true;
+                     
+                     if (passed) {
+                        resultItem.innerHTML = `<span class="font-bold text-green-600">Test 1: PASSED</span><br>Correct conceptual approach detected.`;
+                        resultItem.classList.replace('bg-blue-100', 'bg-green-100');
+                     } else {
+                        allPassed = false;
+                        resultItem.innerHTML = `<span class="font-bold text-red-600">Test 1: FAILED</span><br>The core concept was not correctly implemented.`;
+                        resultItem.classList.replace('bg-blue-100', 'bg-red-100');
+                     }
+                     testResultsList.appendChild(resultItem);
+                     return allPassed;
+                }
+
+                try {
+                    const userFunction = new Function('return ' + userCode)();
+                    
+                    selectedDebugChallenge.testCases.forEach((test, index) => {
+                        const resultItem = document.createElement('div');
+                        resultItem.className = 'test-result-item p-2 rounded';
+                        try {
+                            const output = userFunction(JSON.parse(JSON.stringify(test.input)));
+                            const passed = JSON.stringify(output) === JSON.stringify(test.expected);
+                            if (!passed) allPassed = false;
+                            
+                            resultItem.innerHTML = `
+                                <span class="font-bold ${passed ? 'text-green-600' : 'text-red-600'}">Test ${index + 1}: ${passed ? 'PASSED' : 'FAILED'}</span>
+                                ${!passed ? `<br>Expected: ${JSON.stringify(test.expected)}, Got: ${JSON.stringify(output)}` : ''}
+                            `;
+                            resultItem.classList.add(passed ? 'bg-green-100' : 'bg-red-100');
+                        } catch (err) {
+                            allPassed = false;
+                            resultItem.innerHTML = `<span class="font-bold text-red-600">Test ${index + 1}: ERROR</span><br>${err.message}`;
+                            resultItem.classList.add('bg-red-100');
+                        }
+                        testResultsList.appendChild(resultItem);
+                    });
+                } catch (e) {
+                    allPassed = false;
+                    const errorItem = document.createElement('div');
+                    errorItem.className = 'test-result-item p-2 rounded bg-red-100';
+                    errorItem.innerHTML = `<span class="font-bold text-red-600">Syntax Error:</span><br>${e.message}`;
+                    testResultsList.appendChild(errorItem);
+                }
+                
+                return allPassed;
+            }
+
+            function finishChallenge() {
+                clearInterval(debugTimerInterval);
+                const allTestsPassed = runTests();
+                
+                if (allTestsPassed) {
+                    score++;
+                }
+
+                debugData = {
+                    problem: selectedDebugChallenge.problem,
+                    submittedCode: codeEditor.value,
+                    testsPassed: allTestsPassed,
+                    explanation: selectedDebugChallenge.explanation
+                };
+                
+                progressBar.style.width = `100%`;
+
+                transitionToStep(stepDebug, step3);
+                showResults();
+            }
+
+            function showResults() {
+                finalScoreEl.textContent = `${score}/${quizQuestions.length + 1}`;
+                
+                const percentage = (score / (quizQuestions.length + 1)) * 100;
+                 if (percentage >= 65) {
+                    downloadCertBtn.classList.remove('hidden');
+                } else {
+                    certificateEligibilityMessageEl.textContent = "A score of 65% is required for a Certificate of Completion.";
+                    certificateEligibilityMessageEl.classList.remove('hidden');
+                }
+                
+                if (percentage > 85) {
+                    placementMessageEl.textContent = "Excellent score! We'll be in touch regarding next steps.";
+                    placementMessageEl.classList.add('text-green-600');
+                } else {
+                    placementMessageEl.textContent = "Thank you for taking the test. We appreciate your time.";
+                    placementMessageEl.classList.add('text-gray-600');
+                }
+                
+                sendDataToBackend();
+                populateFullReview();
+            }
+            
+            function populateFullReview() {
+                reviewSection.classList.remove('hidden');
+                fullReviewList.innerHTML = '';
+                userAnswers.forEach((answer, index) => {
+                    const isCorrect = answer.userAnswer === answer.correctAnswer;
+                    let userAnswerText = (answer.userAnswer === -1) ? '<span class="font-semibold text-gray-600">Not Answered</span>' : answer.options[answer.userAnswer];
+                    let correctAnswerText = answer.options[answer.correctAnswer];
+
+                    const reviewItem = document.createElement('div');
+                    reviewItem.className = `p-4 border rounded-lg ${isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`;
+                    reviewItem.innerHTML = `
+                        <p class="font-semibold text-gray-800">${index + 1}. ${answer.question}</p>
+                        <p class="text-sm mt-2">Your Answer: <span class="${isCorrect ? 'text-green-700 font-bold' : 'text-red-700 font-bold'}">${userAnswerText}</span></p>
+                        ${!isCorrect ? `<p class="text-sm mt-1">Correct Answer: <span class="text-green-700 font-bold">${correctAnswerText}</span></p>` : ''}
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                           <p class="text-xs text-gray-500"><span class="font-bold">Rationale:</span> ${answer.rationale}</p>
+                        </div>`;
+                    fullReviewList.appendChild(reviewItem);
+                });
+
+                const debugReviewItem = document.createElement('div');
+                const testsPassed = debugData.testsPassed;
+                debugReviewItem.className = `p-4 border rounded-lg ${testsPassed ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`;
+                debugReviewItem.innerHTML = `
+                    <p class="font-semibold text-gray-800">Debugging Challenge: ${debugData.problem}</p>
+                    <p class="text-sm mt-2 font-bold">Your Submission:</p>
+                    <pre class="text-xs bg-gray-800 text-white p-2 rounded mt-1 whitespace-pre-wrap"><code>${debugData.submittedCode.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>
+                    <p class="text-sm mt-2">Result: <span class="${testsPassed ? 'text-green-700 font-bold' : 'text-red-700 font-bold'}">${testsPassed ? 'All tests passed' : 'Some tests failed'}</span></p>
+                    <div class="mt-3 pt-3 border-t border-gray-200">
+                        <p class="text-xs text-gray-500"><span class="font-bold">Explanation of Bugs:</span><br>${debugData.explanation}</p>
+                    </div>
+                `;
+                fullReviewList.appendChild(debugReviewItem);
+            }
+
+            function sendDataToBackend() {
+                const finalData = { 
+                    ...userData, 
+                    score: `${score}/${quizQuestions.length + 1}`,
+                    debugChallengeSubmission: JSON.stringify(debugData),
+                    debugTestStatus: debugData.testsPassed ? 'Pass' : 'Fail'
+                };
+                fetch(googleSheetWebAppUrl, { method: 'POST', mode: 'no-cors', cache: 'no-cache', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalData) })
+                  .then(() => console.log("Candidate data sent successfully."))
+                  .catch(err => console.error("Error sending data:", err));
+            }
+            
+            async function generateCertificate() {
+                document.getElementById('cert-name').textContent = userData.name;
+                document.getElementById('cert-score').textContent = score;
+                document.getElementById('cert-date').textContent = new Date().toLocaleDateString('en-GB');
+                document.getElementById('cert-number').textContent = userData.certificateNumber;
+                const certificateElement = document.getElementById('certificate-template');
+                certificateElement.classList.remove('hidden');
+
+                const canvas = await html2canvas(certificateElement, { scale: 3, useCORS: true, backgroundColor: null });
+                const imgData = canvas.toDataURL('image/png');
+                
+                certificateElement.classList.add('hidden');
+
+                window.jsPDF = window.jspdf.jsPDF;
+                const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [842, 595] });
+                
+                pdf.addImage(imgData, 'PNG', 0, 0, 842, 595);
+
+                pdf.save(`Certificate-${userData.name.replace(/ /g, '_')}.pdf`);
+            }
+            
+            function openValidator() {
+                validatorModal.classList.remove('hidden');
+            }
+
+            function closeValidator() {
+                validatorModal.classList.add('hidden');
+                certIdInput.value = '';
+                validatorResultEl.innerHTML = '';
+                validatorResultEl.classList.add('hidden');
+            }
+
+            async function validateCertificate() {
+                const certId = certIdInput.value.trim();
+                if (!certId) {
+                    validatorResultEl.innerHTML = `<p class="text-red-700 font-bold p-2">Please enter a Certificate Number.</p>`;
+                    validatorResultEl.classList.remove('hidden', 'bg-green-100');
+                    validatorResultEl.classList.add('bg-red-100');
+                    return;
+                }
+
+                validateCertBtn.innerHTML = `<span class="spinner"></span> Validating...`;
+                validateCertBtn.disabled = true;
+
+                try {
+                    const response = await fetch(`${googleSheetWebAppUrl}?certId=${encodeURIComponent(certId)}`);
+                    const result = await response.json();
+                    
+                    validatorResultEl.classList.remove('hidden');
+                    if (result.found) {
+                        const issueDate = new Date(result.timestamp).toLocaleDateString('en-GB');
+                        validatorResultEl.classList.remove('bg-red-100');
+                        validatorResultEl.classList.add('bg-green-100');
+                        validatorResultEl.innerHTML = `
+                            <div class="flex items-center text-green-800">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-patch-check-fill mr-3 flex-shrink-0" viewBox="0 0 16 16"><path d="M10.067.87a2.89 2.89 0 0 0-4.134 0l-.622.638-.89-.011a2.89 2.89 0 0 0-2.924 2.924l.01.89-.636.622a2.89 2.89 0 0 0 0 4.134l.637.622-.011.89a2.89 2.89 0 0 0 2.924 2.924l.89-.01.622.636a2.89 2.89 0 0 0 4.134 0l.622-.637.89.011a2.89 2.89 0 0 0 2.924-2.924l-.01-.89.636-.622a2.89 2.89 0 0 0 0-4.134l-.637-.622.011-.89a2.89 2.89 0 0 0-2.924-2.924l-.89.01-.622-.636zm.287 5.984-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7 8.793l2.646-2.647a.5.5 0 0 1 .708.708z"/></svg>
+                                <div>
+                                    <p class="font-bold">Certificate Valid</p>
+                                    <p class="text-sm">Issued to: <strong class="font-semibold">${result.name}</strong></p>
+                                    <p class="text-sm">Score: <strong class="font-semibold">${result.score}</strong> on ${issueDate}</p>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        validatorResultEl.classList.remove('bg-green-100');
+                        validatorResultEl.classList.add('bg-red-100');
+                        validatorResultEl.innerHTML = `<p class="text-red-700 font-bold p-2">Certificate Not Found or Invalid.</p>`;
+                    }
+                } catch (error) {
+                    console.error("Validation error:", error);
+                    validatorResultEl.classList.remove('hidden', 'bg-green-100');
+                    validatorResultEl.classList.add('bg-red-100');
+                    validatorResultEl.innerHTML = `<p class="text-red-700 font-bold p-2">An error occurred during validation. Please try again.</p>`;
+                } finally {
+                    validateCertBtn.innerHTML = `Validate`;
+                    validateCertBtn.disabled = false;
+                }
+            }
+
+            // --- EVENT LISTENERS ---
+            showInstructionsBtn.addEventListener('click', showInstructions);
+            startQuizBtn.addEventListener('click', startQuiz);
+            nextQuestionBtn.addEventListener('click', () => handleNextQuestion(true));
+            runTestsBtn.addEventListener('click', runTests);
+            submitChallengeBtn.addEventListener('click', finishChallenge);
+            downloadCertBtn.addEventListener('click', generateCertificate);
+            openValidatorBtn.addEventListener('click', openValidator);
+            closeValidatorBtn.addEventListener('click', closeValidator);
+            validateCertBtn.addEventListener('click', validateCertificate);
+        });
+    </script>
+
+</body>
+</html>
